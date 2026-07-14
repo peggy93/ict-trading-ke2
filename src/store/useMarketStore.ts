@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Candle, OrderBook, PerformanceMetrics, Signal, Timeframe, Trade } from "@/types";
 import type { WsStatus } from "@/services/bingx/wsManager";
-import { MAX_CANDLES } from "@/config/constants";
+import { MAX_CANDLES } from "@/constants";
 
 interface MarketState {
   candles: Partial<Record<Timeframe, Candle[]>>;

@@ -49,25 +49,40 @@ server-side).
 ## Architecture
 
 ```
-src/
-├── app/            # Next.js App Router (routes, API proxy, alert relay)
-├── components/ui/  # Reusable presentational primitives
-├── features/       # Feature-scoped UI (dashboard, chart, signals, …)
-├── hooks/          # React hooks (websocket, candles, ict, signals, orderbook)
-├── services/       # BingX REST/WS clients, signing, alert service
-├── engine/         # Pure detection engine
-│   ├── indicators/ marketStructure/ liquidity/ fvg/
-│   ├── orderBlocks/ zones/ sessions/ displacement/
-│   └── signals/    # confidence · filters · risk · signalEngine
-├── store/          # Zustand stores (market, settings, watchlist)
-├── config/         # Constants, sessions, confluence weights, thresholds
-├── utils/          # Math/format helpers
-├── lib/            # Low-level utilities
-└── types/          # Shared TypeScript types
+.
+├── public/                 # Static assets served at the web root (favicon)
+└── src/
+    ├── app/                # Next.js App Router (routes, API proxy, alert relay)
+    ├── assets/             # In-bundle assets (SVG logo component)
+    ├── components/         # All reusable UI, grouped by domain
+    │   ├── ui/             # Presentational primitives
+    │   ├── dashboard/ chart/ orderbook/ structure/ signals/
+    │   └── sessions/ volume/ watchlist/ metrics/ status/ settings/
+    ├── config/             # Tunable engine config (thresholds, confluence weights)
+    ├── constants/          # Static domain constants (timeframes, sessions, fib)
+    ├── hooks/              # React hooks (websocket, candles, ict, signals, orderbook)
+    ├── lib/                # Shared libraries
+    │   ├── utils.ts        # Low-level helpers
+    │   └── engine/         # Pure SMC/ICT detection engine
+    │       ├── indicators/ marketStructure/ liquidity/ fvg/
+    │       ├── orderBlocks/ zones/ sessions/ displacement/
+    │       └── signals/    # confidence · filters · risk · signalEngine
+    ├── middleware/         # Edge middleware logic (security headers)
+    ├── middleware.ts       # Next.js middleware entrypoint
+    ├── providers/          # React context providers (TanStack Query)
+    ├── services/           # External integrations (BingX REST/WS, alerts)
+    ├── store/              # Zustand stores (market, settings, watchlist)
+    ├── styles/             # Global stylesheet
+    ├── types/              # Shared TypeScript types
+    └── utils/              # Domain math/format helpers
 ```
 
-The engine is **pure and framework-free**, so it is unit-testable and reusable for future
-backtesting, paper trading, or a worker thread.
+The engine (`src/lib/engine`) is **pure and framework-free**, so it is unit-testable and reusable
+for future backtesting, paper trading, or a worker thread.
+
+> **Note on `context/`:** application state is handled by **Zustand stores** (`src/store`) plus the
+> composition root in `src/providers`, so a separate React `context/` layer would be redundant and
+> was intentionally omitted to avoid dead code.
 
 ---
 

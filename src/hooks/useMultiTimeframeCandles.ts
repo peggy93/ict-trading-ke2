@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { fetchKlines } from "@/services/bingx/rest";
 import { useMarketStore } from "@/store/useMarketStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
-import { TIMEFRAMES } from "@/config/constants";
+import { TIMEFRAMES } from "@/constants";
 import type { MarketType } from "@/types";
 
 /**

@@ -6,10 +6,7 @@ import type { Config } from "tailwindcss";
  * expects a config module and to declare content globs explicitly.
  */
 const config: Config = {
-  content: [
-    "./src/app/**/*.{ts,tsx}",
-    "./src/components/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
 };
 
 export default config;
