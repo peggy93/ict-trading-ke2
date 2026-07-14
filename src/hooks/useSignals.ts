@@ -3,10 +3,10 @@ import { useEffect, useRef } from "react";
 import { useMarketStore } from "@/store/useMarketStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useWatchlistStore } from "@/store/useWatchlistStore";
-import { generateSignal } from "@/engine/signals/signalEngine";
-import { killzoneStatus, sessionBias } from "@/engine/sessions";
+import { generateSignal } from "@/lib/engine/signals/signalEngine";
+import { killzoneStatus, sessionBias } from "@/lib/engine/sessions";
 import { fireAlerts } from "@/services/alerts/alertService";
-import { MIN_CANDLES_FOR_SIGNAL } from "@/config/constants";
+import { MIN_CANDLES_FOR_SIGNAL } from "@/constants";
 import type { Bias, IctSnapshot, Timeframe } from "@/types";
 
 interface Args {

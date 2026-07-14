@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { Providers } from "./providers";
+import "@/styles/globals.css";
+import { Providers } from "@/providers";
 
 export const metadata: Metadata = {
   title: "ICT / SMC Scanner",
   description: "Institutional Smart Money Concepts analysis platform for BingX (Spot + USDT-M Perp)",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

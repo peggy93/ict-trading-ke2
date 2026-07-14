@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MarketType, Timeframe } from "@/types";
 import type { AlertPrefs } from "@/services/alerts/alertService";
-import { THRESHOLDS } from "@/config/constants";
+import { THRESHOLDS } from "@/config";
 
 interface SettingsState {
   symbol: string;

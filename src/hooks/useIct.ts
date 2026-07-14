@@ -1,8 +1,8 @@
 "use client";
 import { useMemo } from "react";
 import { useMarketStore } from "@/store/useMarketStore";
-import { htfBias, runIct } from "@/engine/ictEngine";
-import { TIMEFRAMES } from "@/config/constants";
+import { htfBias, runIct } from "@/lib/engine/ictEngine";
+import { TIMEFRAMES } from "@/constants";
 import type { IctSnapshot, Timeframe } from "@/types";
 
 /**
