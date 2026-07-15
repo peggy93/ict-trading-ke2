@@ -1,58 +1,44 @@
 "use client";
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useWatchlistStore } from "@/store/useWatchlistStore";
+import { useUiStore } from "@/store/useUiStore";
 import { useMultiTimeframeCandles } from "@/hooks/useMultiTimeframeCandles";
 import { useBingxWebSocket } from "@/hooks/useBingxWebSocket";
 import { useOrderBookSnapshot } from "@/hooks/useOrderBook";
 import { useIct } from "@/hooks/useIct";
 import { useSignals } from "@/hooks/useSignals";
-import { CHART_TIMEFRAMES } from "@/constants";
-import type { MarketType, Timeframe } from "@/types";
-import { LogoIcon } from "@/assets/logo";
-import { MarketHeader } from "./MarketHeader";
-import { OrderBookPanel } from "@/components/orderbook/OrderBook";
-import { SignalPanel } from "@/components/signals/SignalPanel";
-import { StructurePanel } from "@/components/structure/StructurePanel";
-import { LiquidityPanel } from "@/components/structure/LiquidityPanel";
-import { SessionTimer } from "@/components/sessions/SessionTimer";
-import { VolumePanel } from "@/components/volume/VolumePanel";
-import { Watchlist } from "@/components/watchlist/Watchlist";
-import { PerformanceMetricsPanel } from "@/components/metrics/PerformanceMetrics";
-import { ConnectionBadges } from "@/components/status/ConnectionBadges";
-import { ApiKeyDialog } from "@/components/settings/ApiKeyDialog";
-
-// Chart is client-only (touches the DOM) and lazy-loaded for code splitting.
-const CandleChart = dynamic(
-  () => import("@/components/chart/CandleChart").then((m) => m.CandleChart),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[440px] items-center justify-center text-sm text-slate-500">
-        Loading chart…
-      </div>
-    ),
-  },
-);
+import { useAnalyticsTracker } from "@/hooks/useAnalyticsTracker";
+import { useEventAlerts } from "@/hooks/useEventAlerts";
+import { TopBar } from "@/components/layout/TopBar";
+import { SideNav } from "@/components/layout/SideNav";
+import { LiveView } from "@/components/views/LiveView";
+import { AnalyticsView } from "@/components/views/AnalyticsView";
+import { RiskView } from "@/components/views/RiskView";
+import { AlertsView } from "@/components/views/AlertsView";
+import { BacktestView } from "@/components/views/BacktestView";
+import { SettingsView } from "@/components/views/SettingsView";
 
 /**
- * Top-level dashboard. Owns no market data itself — it wires hooks together
- * and lays out the responsive grid. Every panel subscribes only to the store
- * slice it needs, so a price tick never re-renders the whole tree.
+ * Application shell. Owns the shared data pipeline (candles → WS → ICT engine →
+ * signals → paper-trade tracker → alerts) exactly once, then routes the active
+ * view. Data hooks run here so switching views never drops the live stream or
+ * recomputes the strategy — preserving 100% of existing behaviour.
  */
 export function DashboardShell() {
-  const { symbol, market, timeframe, set } = useSettingsStore();
+  const { symbol, market, timeframe } = useSettingsStore();
   const setBias = useWatchlistStore((s) => s.setBias);
-  const [showKeys, setShowKeys] = useState(false);
+  const view = useUiStore((s) => s.view);
 
-  // Bootstrap history for every timeframe (multi-TF analysis) + stream active TF.
+  // Shared, always-on data pipeline (independent of the active view).
   useMultiTimeframeCandles(market, symbol);
   useBingxWebSocket(market, symbol, timeframe);
   useOrderBookSnapshot(market, symbol);
 
   const { active, htf, snapshots } = useIct(timeframe);
   useSignals({ timeframe, snapshot: active, htf: htf.bias });
+  useAnalyticsTracker();
+  useEventAlerts(active);
 
   // Keep the active symbol's watchlist bias in sync with the HTF cascade.
   useEffect(() => {
@@ -60,71 +46,19 @@ export function DashboardShell() {
   }, [symbol, htf.bias, active, setBias]);
 
   return (
-    <div className="mx-auto max-w-[1700px] p-3 md:p-4">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="flex items-center gap-2 text-lg font-semibold">
-            <LogoIcon className="h-5 w-5 text-[var(--accent)]" /> ICT / SMC Scanner
-          </h1>
-          <ConnectionBadges />
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={market}
-            onChange={(e) => set({ market: e.target.value as MarketType })}
-            className="panel px-2 py-1 text-sm"
-          >
-            <option value="perp">USDT-M Perp</option>
-            <option value="spot">Spot</option>
-          </select>
-          <input
-            value={symbol}
-            onChange={(e) => set({ symbol: e.target.value.toUpperCase().trim() })}
-            className="panel mono w-32 px-2 py-1 text-sm"
-            placeholder="BTC-USDT"
-          />
-          <select
-            value={timeframe}
-            onChange={(e) => set({ timeframe: e.target.value as Timeframe })}
-            className="panel px-2 py-1 text-sm"
-          >
-            {CHART_TIMEFRAMES.map((tf) => (
-              <option key={tf} value={tf}>{tf}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowKeys(true)}
-            className="panel px-3 py-1 text-sm hover:bg-slate-800"
-          >
-            Settings
-          </button>
-        </div>
-      </header>
-
-      <MarketHeader htf={htf} />
-
-      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
-        <section className="space-y-3 lg:col-span-8">
-          <div className="panel p-2">
-            <CandleChart snapshot={active} />
-          </div>
-          <StructurePanel snapshot={active} snapshots={snapshots} />
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <LiquidityPanel snapshot={active} />
-            <VolumePanel snapshot={active} />
-          </div>
-        </section>
-
-        <aside className="space-y-3 lg:col-span-4">
-          <SessionTimer />
-          <SignalPanel />
-          <OrderBookPanel />
-          <Watchlist />
-          <PerformanceMetricsPanel />
-        </aside>
+    <div className="min-h-screen">
+      <TopBar />
+      <div className="mx-auto flex max-w-[1700px] flex-col gap-3 px-3 py-3 md:px-4 lg:flex-row">
+        <SideNav />
+        <main className="min-w-0 flex-1">
+          {view === "live" && <LiveView active={active} htf={htf} snapshots={snapshots} />}
+          {view === "analytics" && <AnalyticsView />}
+          {view === "risk" && <RiskView />}
+          {view === "alerts" && <AlertsView />}
+          {view === "backtest" && <BacktestView />}
+          {view === "settings" && <SettingsView />}
+        </main>
       </div>
-
-      {showKeys && <ApiKeyDialog onClose={() => setShowKeys(false)} />}
     </div>
   );
 }

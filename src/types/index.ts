@@ -301,3 +301,84 @@ export interface PerformanceMetrics {
   sellCount: number;
   lastUpdated: number;
 }
+
+
+// =============================================================================
+// Paper trading / analytics (derived from signals; not part of the strategy)
+// =============================================================================
+export type TradeStatus = "open" | "win" | "loss" | "breakeven";
+export type TradeExitReason = "TP" | "SL" | "BE" | "manual";
+
+export interface PaperTrade {
+  id: string;
+  signalId: string;
+  symbol: string;
+  market: MarketType;
+  timeframe: Timeframe;
+  side: "BUY" | "SELL";
+  entry: number;
+  stopLoss: number;
+  takeProfit: number;      // primary target (TP2) used for settlement
+  riskReward: number;
+  confidence: number;
+  openedAt: number;
+  status: TradeStatus;
+  closedAt?: number;
+  exitPrice?: number;
+  rMultiple?: number;      // realized reward in R multiples
+  reason?: TradeExitReason;
+}
+
+export interface EquityPoint {
+  t: number;
+  equityR: number;         // cumulative realized R after this trade
+}
+
+export interface PeriodPerformance {
+  key: string;             // e.g. "2026-07" or "2026-07-14"
+  netR: number;
+  trades: number;
+  wins: number;
+}
+
+export interface PerformanceReport {
+  totalTrades: number;
+  openTrades: number;
+  closedTrades: number;
+  wins: number;
+  losses: number;
+  breakeven: number;
+  winRate: number;         // 0..100 over closed decisive trades
+  profitFactor: number;    // gross win R / gross loss R (Infinity if no losses)
+  netR: number;            // total realized R
+  maxDrawdownR: number;
+  avgRiskReward: number;   // mean planned RR of closed trades
+  avgWinR: number;
+  avgLossR: number;
+  expectancyR: number;     // mean R per closed trade
+  equityCurve: EquityPoint[];
+  daily: PeriodPerformance[];
+  monthly: PeriodPerformance[];
+}
+
+// =============================================================================
+// Backtesting
+// =============================================================================
+export interface BacktestParams {
+  minConfidence: number;
+  minConfirmations: number;
+  /** Warmup bars before signals may fire. */
+  warmup: number;
+}
+
+export interface BacktestResult {
+  symbol: string;
+  market: MarketType;
+  timeframe: Timeframe;
+  params: BacktestParams;
+  fromTime: number;
+  toTime: number;
+  candlesTested: number;
+  trades: PaperTrade[];
+  report: PerformanceReport;
+}

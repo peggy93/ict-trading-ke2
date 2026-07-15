@@ -10,6 +10,7 @@ import {
 } from "lightweight-charts";
 import { useMarketStore } from "@/store/useMarketStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
+import { useTheme } from "@/context/ThemeContext";
 import type { IctSnapshot } from "@/types";
 
 /**
@@ -24,6 +25,7 @@ export function CandleChart({ snapshot }: { snapshot?: IctSnapshot }) {
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const { timeframe } = useSettingsStore();
+  const { theme } = useTheme();
   const candles = useMarketStore((s) => s.candles[timeframe]);
 
   // Create chart once.
@@ -35,13 +37,13 @@ export function CandleChart({ snapshot }: { snapshot?: IctSnapshot }) {
         textColor: "#94a3b8",
       },
       grid: {
-        vertLines: { color: "#1e293b" },
-        horzLines: { color: "#1e293b" },
+        vertLines: { color: "rgba(128,140,160,0.15)" },
+        horzLines: { color: "rgba(128,140,160,0.15)" },
       },
       height: 440,
       autoSize: true,
-      timeScale: { timeVisible: true, borderColor: "#1e293b" },
-      rightPriceScale: { borderColor: "#1e293b" },
+      timeScale: { timeVisible: true, borderColor: "rgba(128,140,160,0.25)" },
+      rightPriceScale: { borderColor: "rgba(128,140,160,0.25)" },
     });
     const series = chart.addCandlestickSeries({
       upColor: "#16c784",
@@ -59,6 +61,13 @@ export function CandleChart({ snapshot }: { snapshot?: IctSnapshot }) {
       priceLinesRef.current = [];
     };
   }, []);
+
+  // Re-tint axis text when the theme changes.
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      layout: { textColor: theme === "light" ? "#475569" : "#94a3b8" },
+    });
+  }, [theme]);
 
   // Push candle data (imperative update avoids React re-render per tick).
   useEffect(() => {

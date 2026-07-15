@@ -13,7 +13,7 @@ detection engine, and emits scored BUY/SELL setups with a full risk plan.
 
 ## Features
 
-### Detection engine (`src/engine`)
+### Detection engine (`src/lib/engine`)
 - **Market structure** — BOS, CHoCH, MSS, internal vs external structure, swing highs/lows,
   strong/weak points and protected highs/lows, with close-through + displacement noise filtering.
 - **Liquidity** — buy/sell-side liquidity (BSL/SSL), equal highs/lows, resting vs engineered pools,
@@ -35,10 +35,9 @@ detection engine, and emits scored BUY/SELL setups with a full risk plan.
 - **Multi-timeframe** — 1m, 3m, 5m, 15m, 30m, 1h, 4h, 1D, 1W analyzed simultaneously with an HTF
   bias cascade that influences lower-timeframe signals.
 
-### Dashboard (`src/features`)
-Live price, order book, market structure, ranked order blocks, fair value gaps, liquidity map,
-sessions & kill zones, volume analysis, active signals, watchlist, multi-timeframe bias, REST +
-WebSocket status, and performance metrics.
+### Dashboard (`src/components`)
+A premium, responsive, TradingView/Bloomberg-style dashboard with **dark & light themes** and six
+views (see the **Dashboard Guide** below): Live, Analytics, Risk, Alerts, Backtest and Settings.
 
 ### Alerts
 Browser notifications, sound, plus optional server-relayed Telegram & Discord alerts (tokens stay
@@ -163,3 +162,83 @@ modular boundaries without touching the core engine.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit tests |
 | `npm run format` | Prettier write |
+
+
+---
+
+# Dashboard Guide
+
+The dashboard is a client-rendered app shell (`src/components/dashboard/DashboardShell.tsx`) that
+owns the live data pipeline **once** and routes between six views. The strategy engine
+(`src/lib/engine`) is consumed read-only — the dashboard never alters detection logic.
+
+## Installation
+
+```bash
+git clone https://github.com/peggy93/ict-trading-ke2.git
+cd ict-trading-ke2
+npm install
+cp .env.example .env.local     # optional; public market data works without keys
+npm run dev                    # http://localhost:3000
+```
+
+Production:
+
+```bash
+npm run build && npm start
+```
+
+## Configuration
+
+| Where | What |
+| --- | --- |
+| **Top bar** | Market (Spot / USDT-M Perp), symbol, and chart timeframe. |
+| **API Keys dialog** | BingX read-only key/secret (kept in memory, sent per-request to the signed proxy). |
+| **Settings view** | Theme (dark/light), accent color, indicator/panel visibility, default timeframe, min confidence & confirmations, and named presets. |
+| **Risk view** | Account equity, sizing mode, risk %, guardrails, break-even/trailing/partial-TP. |
+| **Alerts view** | Delivery channels and per-event triggers. |
+| **`.env.local`** | Server-side secrets: `BINGX_API_KEY/SECRET`, `TELEGRAM_BOT_TOKEN/CHAT_ID`, `DISCORD_WEBHOOK_URL`. |
+
+Preferences persist to `localStorage` (theme, UI, risk, alerts, presets, watchlist). The API
+secret is **never** persisted.
+
+## Views
+
+- **Live** — Real-time market read-out: price + HTF bias cascade, candlestick chart with structure
+  markers and EQ/OTE/FVG price lines, current-trade card (entry/SL/TP1–3, R:R, live-R, position
+  status), premium/discount meter, multi-timeframe grid, market structure (BOS/CHoCH/MSS), ranked
+  order blocks, fair value gaps, liquidity map, sessions & kill zones, volume, signals, order book
+  and watchlist. Every panel can be toggled in Settings.
+- **Analytics** — Live paper-trading performance: win rate, net P/L (R), profit factor, max
+  drawdown, avg R:R, expectancy, equity curve, monthly/daily breakdown and full trade history.
+  Export to CSV. Signals are auto-tracked and settled against streaming candles.
+- **Risk** — Position-sizing calculator and risk guardrails (see table above), with a live sizing
+  preview from the latest signal.
+- **Alerts** — Channels (browser, sound, Telegram, Discord; email/push are configuration
+  placeholders) and per-event triggers (signals, BOS, CHoCH, OB, FVG, sweep, session). "Send test"
+  verifies your setup.
+- **Backtest** — Replays the **exact** production engine bar-by-bar over historical klines and
+  reports win rate, net R, profit factor, drawdown, expectancy, equity curve and trades. Export to
+  CSV. Tunable min-confidence / confirmations / warmup.
+- **Settings** — Customization and presets (above).
+
+## Architecture notes
+
+- **State:** Zustand stores (`src/store`) for market data, settings, watchlist, UI, risk,
+  analytics and presets; React Context (`src/context`) for theme.
+- **Analytics & backtest** live in `src/lib/analytics` and `src/lib/backtest` — pure functions that
+  wrap strategy output; they contain **no** detection logic.
+- **Performance:** the data pipeline runs once in the shell; panels subscribe to narrow store
+  slices; the chart updates imperatively; heavy analysis is memoized by candle counts.
+
+## Known limitations (transparency)
+
+- **Paper only:** there is no broker/order execution. Analytics & backtests are simulations of the
+  signals; trade management options (break-even, trailing, partial TP) configure the model and
+  sizing, and full execution modelling is a future enhancement.
+- **Backtest HTF bias** is approximated from the tested timeframe (a single kline series is
+  fetched), so live multi-timeframe confluence may differ.
+- **Email & push** alerts are wired as configuration only — enabling them requires an SMTP provider
+  in `/api/alerts` and a service worker + VAPID keys respectively.
+- **PDF export / trade replay / parameter-sweep optimization** are not yet implemented (CSV export
+  is available for trades and backtests).
