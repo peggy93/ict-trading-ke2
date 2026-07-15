@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { MarketType, Timeframe } from "@/types";
 import type { AlertPrefs } from "@/services/alerts/alertService";
+import { DEFAULT_ALERTS } from "@/services/alerts/alertService";
 import { THRESHOLDS } from "@/config";
 
 interface SettingsState {
@@ -31,7 +32,7 @@ export const useSettingsStore = create<SettingsState>()(
       minConfirmations: 4,
       apiKey: "",
       apiSecret: "",
-      alerts: { browser: true, sound: true, telegram: false, discord: false },
+      alerts: DEFAULT_ALERTS,
       set: (patch) => set(patch),
       setAlerts: (patch) => set((s) => ({ alerts: { ...s.alerts, ...patch } })),
     }),

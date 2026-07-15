@@ -1,11 +1,47 @@
 import type { Signal } from "@/types";
 
-export interface AlertPrefs {
+/** Delivery channels. email/push are configuration placeholders (see note). */
+export interface AlertChannels {
   browser: boolean;
   sound: boolean;
   telegram: boolean;
   discord: boolean;
+  email: boolean;
+  push: boolean;
 }
+
+/** Which strategy events raise an alert. */
+export interface AlertEvents {
+  signals: boolean;
+  bos: boolean;
+  choch: boolean;
+  orderBlock: boolean;
+  fvg: boolean;
+  sweep: boolean;
+  session: boolean;
+}
+
+export interface AlertPrefs extends AlertChannels {
+  events: AlertEvents;
+}
+
+export const DEFAULT_ALERTS: AlertPrefs = {
+  browser: true,
+  sound: true,
+  telegram: false,
+  discord: false,
+  email: false,
+  push: false,
+  events: {
+    signals: true,
+    bos: true,
+    choch: true,
+    orderBlock: false,
+    fvg: false,
+    sweep: true,
+    session: true,
+  },
+};
 
 let audioCtx: AudioContext | null = null;
 
@@ -43,25 +79,30 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * Fan out a signal to every enabled alert channel. Browser + sound run
- * client-side; Telegram + Discord are relayed through our server route so
- * tokens/webhooks never touch the client bundle.
+ * Fan out a message to every enabled channel. Browser + sound run in the
+ * client; Telegram + Discord relay through the server route so tokens never
+ * touch the client bundle.
+ *
+ * Note: `email` and `push` are configuration placeholders. Email needs an SMTP
+ * provider wired into `/api/alerts`, and push needs a service worker + VAPID
+ * keys — both are intentionally left as no-ops so the UI can express intent
+ * without shipping half-working transport.
  */
-export async function fireAlerts(signal: Signal, prefs: AlertPrefs): Promise<void> {
-  const title = `${signal.side} ${signal.symbol} @ ${signal.entry} (${signal.confidence}%)`;
-  const body =
-    `SL ${signal.stopLoss} · TP1 ${signal.takeProfit1} · TP2 ${signal.takeProfit2} · ` +
-    `TP3 ${signal.takeProfit3} · RR ${signal.riskReward}\n` +
-    signal.reasons.slice(0, 3).join(", ");
-
+export async function dispatchAlert(
+  title: string,
+  body: string,
+  up: boolean,
+  prefs: AlertPrefs,
+  tag?: string,
+): Promise<void> {
   if (
     prefs.browser &&
     typeof Notification !== "undefined" &&
     Notification.permission === "granted"
   ) {
-    new Notification(title, { body, tag: signal.id });
+    new Notification(title, { body, tag });
   }
-  if (prefs.sound) beep(signal.side === "BUY");
+  if (prefs.sound) beep(up);
 
   if (prefs.telegram || prefs.discord) {
     try {
@@ -78,4 +119,15 @@ export async function fireAlerts(signal: Signal, prefs: AlertPrefs): Promise<voi
       /* relay failure shouldn't break the UI */
     }
   }
+}
+
+/** Alert for a generated BUY/SELL signal. */
+export async function fireAlerts(signal: Signal, prefs: AlertPrefs): Promise<void> {
+  if (!prefs.events.signals) return;
+  const title = `${signal.side} ${signal.symbol} @ ${signal.entry} (${signal.confidence}%)`;
+  const body =
+    `SL ${signal.stopLoss} · TP1 ${signal.takeProfit1} · TP2 ${signal.takeProfit2} · ` +
+    `TP3 ${signal.takeProfit3} · RR ${signal.riskReward}\n` +
+    signal.reasons.slice(0, 3).join(", ");
+  await dispatchAlert(title, body, signal.side === "BUY", prefs, signal.id);
 }
